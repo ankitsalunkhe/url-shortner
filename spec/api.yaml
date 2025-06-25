@@ -1,0 +1,96 @@
+openapi: 3.0.0
+info:
+  title: URL Shortner API
+  version: 1.0.0
+  description: |-
+    An API to create and get shortened URL from long URL
+paths:
+  /ping:
+    get:
+      summary: Ping
+      operationId: getPing
+      description: Ping Endpoint
+      responses:
+        200:
+          $ref: "#/components/responses/Success"
+  /url/{shortUrl}:
+    get:
+      summary: Get Long URL
+      operationId: getURL
+      parameters:
+        - name: shortUrl
+          in: path
+          required: true
+          description: The short URL code
+          schema:
+            type: string
+      responses:
+        301:
+          $ref: "#/components/responses/Success"
+        400:
+          $ref: "#/components/responses/Error"
+        500:
+          $ref: "#/components/responses/Error"
+  
+  /url:
+    post:
+      summary: Create short url
+      operationId: postURL
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/request"
+      responses:
+        201:
+          $ref: "#/components/responses/Success"
+        400:
+          $ref: "#/components/responses/Error"
+        500:
+          $ref: "#/components/responses/Error"
+components:
+  schemas:
+    request:
+      type: object
+      properties:
+        url:
+          type: string
+          description: "URL to shorten"
+          example: "https://github.com/ankitsalunkhe"
+      required:
+        - url
+  responses:
+    Ping:
+      description: Ping response
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "https://git.com/asdf123"
+    Success:
+      description: Successful response
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              url:
+                type: string
+                example: "https://git.com/asdf123"
+            required:
+              - url
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: 'unable to create shortened url'
+            required:
+              - message
