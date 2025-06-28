@@ -7,6 +7,7 @@ import (
 	"github.com/ankitsalunkhe/url-shortner/api"
 	"github.com/ankitsalunkhe/url-shortner/config"
 	"github.com/ankitsalunkhe/url-shortner/db"
+	"github.com/ankitsalunkhe/url-shortner/service"
 )
 
 func main() {
@@ -20,7 +21,9 @@ func main() {
 		log.Fatal("failed to load config", err)
 	}
 
-	a := api.New(cfg.Port, cfg.BasePath, db)
+	urlShornterService := service.New(db)
+
+	a := api.New(cfg.Port, cfg.BasePath, &urlShornterService)
 
 	err = a.Start(":" + strconv.Itoa(cfg.Port))
 	if err != nil {

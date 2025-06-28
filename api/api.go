@@ -2,21 +2,21 @@
 package api
 
 import (
-	"github.com/ankitsalunkhe/url-shortner/db"
+	"github.com/ankitsalunkhe/url-shortner/service"
 	"github.com/labstack/echo/v4"
 )
 
 type API struct {
-	echo *echo.Echo
-	db   *db.DB
+	echo    *echo.Echo
+	service service.UrlShortnerService
 }
 
-func New(port int, basePath string, db *db.DB) *echo.Echo {
+func New(port int, basePath string, service service.UrlShortnerService) *echo.Echo {
 	e := echo.New()
 
 	a := &API{
-		echo: e,
-		db:   db,
+		echo:    e,
+		service: service,
 	}
 
 	RegisterHandlersWithBaseURL(e, a, basePath)
