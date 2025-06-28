@@ -1,4 +1,4 @@
-package shortner
+package base62shortner
 
 import (
 	"testing"

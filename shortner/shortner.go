@@ -1,4 +1,4 @@
-package shortner
+package base62shortner
 
 const (
 	base        = 62
@@ -12,6 +12,10 @@ type Shortner interface {
 var _ Shortner = (*Base62)(nil)
 
 type Base62 struct {
+}
+
+func New() Base62 {
+	return Base62{}
 }
 
 func (b Base62) Generate(num int) string {

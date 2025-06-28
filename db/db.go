@@ -8,7 +8,9 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	smithyendpoints "github.com/aws/smithy-go/endpoints"
 )
 
@@ -16,10 +18,30 @@ const (
 	DynamoRegion = "eu-west-1"
 )
 
+type Url struct {
+	ShortUrl string `dynamodbav:"ShortUrl"`
+	LongUrl  string `dynamodbav:"LongUrl"`
+}
+
+func (url Url) GetKey() map[string]types.AttributeValue {
+	shortUrl, err := attributevalue.Marshal(url.ShortUrl)
+	if err != nil {
+		panic(err)
+	}
+	return map[string]types.AttributeValue{"ShortUrl": shortUrl}
+}
+
+type Database interface {
+	UpsertUrl(context.Context, Url) error
+	GetUrl(context.Context, Url) (string, error)
+}
+
 type DB struct {
 	Client    *dynamodb.Client
 	TableName string
 }
+
+var _ Database = (*DB)(nil)
 
 func New() (*DB, error) {
 	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(DynamoRegion))
