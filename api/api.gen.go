@@ -27,14 +27,24 @@ type Request struct {
 	Url string `json:"url"`
 }
 
+// CreateUrl defines model for CreateUrl.
+type CreateUrl struct {
+	Url string `json:"url"`
+}
+
+// DeleteUrl defines model for DeleteUrl.
+type DeleteUrl struct {
+	Message string `json:"message"`
+}
+
 // Error defines model for Error.
 type Error struct {
 	Message string `json:"message"`
 }
 
-// Success defines model for Success.
-type Success struct {
-	Url string `json:"url"`
+// Ping defines model for Ping.
+type Ping struct {
+	Message *string `json:"message,omitempty"`
 }
 
 // PostURLJSONRequestBody defines body for PostURL for application/json ContentType.
@@ -121,6 +131,9 @@ type ClientInterface interface {
 
 	PostURL(ctx context.Context, body PostURLJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteURL request
+	DeleteURL(ctx context.Context, shortUrl string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetURL request
 	GetURL(ctx context.Context, shortUrl string, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
@@ -151,6 +164,18 @@ func (c *Client) PostURLWithBody(ctx context.Context, contentType string, body i
 
 func (c *Client) PostURL(ctx context.Context, body PostURLJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostURLRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteURL(ctx context.Context, shortUrl string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteURLRequest(c.Server, shortUrl)
 	if err != nil {
 		return nil, err
 	}
@@ -240,6 +265,40 @@ func NewPostURLRequestWithBody(server string, contentType string, body io.Reader
 	return req, nil
 }
 
+// NewDeleteURLRequest generates requests for DeleteURL
+func NewDeleteURLRequest(server string, shortUrl string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "shortUrl", runtime.ParamLocationPath, shortUrl)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/url/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetURLRequest generates requests for GetURL
 func NewGetURLRequest(server string, shortUrl string) (*http.Request, error) {
 	var err error
@@ -325,6 +384,9 @@ type ClientWithResponsesInterface interface {
 
 	PostURLWithResponse(ctx context.Context, body PostURLJSONRequestBody, reqEditors ...RequestEditorFn) (*PostURLResponse, error)
 
+	// DeleteURLWithResponse request
+	DeleteURLWithResponse(ctx context.Context, shortUrl string, reqEditors ...RequestEditorFn) (*DeleteURLResponse, error)
+
 	// GetURLWithResponse request
 	GetURLWithResponse(ctx context.Context, shortUrl string, reqEditors ...RequestEditorFn) (*GetURLResponse, error)
 }
@@ -332,7 +394,7 @@ type ClientWithResponsesInterface interface {
 type GetPingResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *Success
+	JSON200      *Ping
 }
 
 // Status returns HTTPResponse.Status
@@ -354,7 +416,7 @@ func (r GetPingResponse) StatusCode() int {
 type PostURLResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON201      *Success
+	JSON201      *CreateUrl
 	JSON400      *Error
 	JSON500      *Error
 }
@@ -375,10 +437,33 @@ func (r PostURLResponse) StatusCode() int {
 	return 0
 }
 
+type DeleteURLResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DeleteUrl
+	JSON400      *Error
+	JSON500      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteURLResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteURLResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetURLResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON301      *Success
 	JSON400      *Error
 	JSON500      *Error
 }
@@ -425,6 +510,15 @@ func (c *ClientWithResponses) PostURLWithResponse(ctx context.Context, body Post
 	return ParsePostURLResponse(rsp)
 }
 
+// DeleteURLWithResponse request returning *DeleteURLResponse
+func (c *ClientWithResponses) DeleteURLWithResponse(ctx context.Context, shortUrl string, reqEditors ...RequestEditorFn) (*DeleteURLResponse, error) {
+	rsp, err := c.DeleteURL(ctx, shortUrl, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteURLResponse(rsp)
+}
+
 // GetURLWithResponse request returning *GetURLResponse
 func (c *ClientWithResponses) GetURLWithResponse(ctx context.Context, shortUrl string, reqEditors ...RequestEditorFn) (*GetURLResponse, error) {
 	rsp, err := c.GetURL(ctx, shortUrl, reqEditors...)
@@ -449,7 +543,7 @@ func ParseGetPingResponse(rsp *http.Response) (*GetPingResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Success
+		var dest Ping
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -475,11 +569,51 @@ func ParsePostURLResponse(rsp *http.Response) (*PostURLResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest Success
+		var dest CreateUrl
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteURLResponse parses an HTTP response from a DeleteURLWithResponse call
+func ParseDeleteURLResponse(rsp *http.Response) (*DeleteURLResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteURLResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DeleteUrl
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest Error
@@ -514,13 +648,6 @@ func ParseGetURLResponse(rsp *http.Response) (*GetURLResponse, error) {
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 301:
-		var dest Success
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON301 = &dest
-
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest Error
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -548,6 +675,9 @@ type ServerInterface interface {
 	// Create short url
 	// (POST /url)
 	PostURL(ctx echo.Context) error
+	// Delete Long URL
+	// (DELETE /url/{shortUrl})
+	DeleteURL(ctx echo.Context, shortUrl string) error
 	// Get Long URL
 	// (GET /url/{shortUrl})
 	GetURL(ctx echo.Context, shortUrl string) error
@@ -573,6 +703,22 @@ func (w *ServerInterfaceWrapper) PostURL(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PostURL(ctx)
+	return err
+}
+
+// DeleteURL converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteURL(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "shortUrl" -------------
+	var shortUrl string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "shortUrl", ctx.Param("shortUrl"), &shortUrl, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter shortUrl: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteURL(ctx, shortUrl)
 	return err
 }
 
@@ -622,6 +768,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 
 	router.GET(baseURL+"/ping", wrapper.GetPing)
 	router.POST(baseURL+"/url", wrapper.PostURL)
+	router.DELETE(baseURL+"/url/:shortUrl", wrapper.DeleteURL)
 	router.GET(baseURL+"/url/:shortUrl", wrapper.GetURL)
 
 }
@@ -629,16 +776,17 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/8xUTW+bTBD+K2je94iCHbcXbmkVRZFysJrmFOWwXsawCexuZoeqlsV/r2YBF+xUjZVL",
-	"T16G8ewzzwd70K7xzqLlAPkeCIN3NmB8uCZyJAftLKNlOSrva6MVG2ez5+Cs1IKusFFy8uQ8Epv+/w2G",
-	"oEqUI/5Uja8Rcmit2tSYsEs0oWJMQuWI0WKRtFRDCrzz0heYjC2h61IgfG0NYQH542Hm06HRbZ5RM3TS",
-	"WWDQZLygg3zA36Vw32qNIXxgFYE2W6Ni9iHPstLwhXZNpkKxXV6u/opfBr0H+wB529bJqEmc1QMctHpt",
-	"MfAfwc4HPny7E9IHtiF9e5eq3fTr2BfDQdWtfanwA0sZu3WnWK5scrW+nXhA2SIpkSdeELhbck1SO1vK",
-	"k4AwHPHKu3vptEgyCFL4gRT62cuLxcVCRHcerfIGcljFUgpecRUJyrxske+hRD5Ftza2TK5t4Z2xDHEQ",
-	"RZfcFpDDDbI0QDrPyuViIT//E24hh/+y37HKDn3Z6MMoZNs0inbDfbGUDcJ516s6v3jtAvc8DMJ/ccXu",
-	"LEu/BW7wUzaaqet6cWerLc9YLYVP76HikM3PZ3TPaPs6+XzET8dIYbaPtQequ4nGJyr2XHpFqkFGCpA/",
-	"HjvhezXOF8tpV0gUjLwRK0EKVjUxFsN9MI0FU4vphP3jCD0d0bz6N2m+QU7uxgyKO34FAAD//42nBukz",
-	"BgAA",
+	"H4sIAAAAAAAC/8xVzU7cMBB+lWjao0UWaC+5UYoQEocVlBPiYJLZjSGxzXhSFa387tU4CZtlaSkF0Z5I",
+	"nGH8zfczu4LStd5ZtBygWAFh8M4GTC+HhJrxghp5KZ1ltCyP2vvGlJqNs/lNcFbOQlljq+XJk/NIbPoe",
+	"Xf/f+EO3vkEooGb2ocjzpeGd0rW5DtVid28fFPC9l4LAZOwSYlRAeNcZwgqKy9To6qHIXd9gyRClqsJQ",
+	"kvECBwo478oSQ1h0TTYOA1HBV2zwtbO0GIJe4tvMMzZ7xUxHRI7eep7O6usGM3ZZmeTPQu2I0WKViQRv",
+	"OVaPPyqYS6d/qMuzSAXghPqoBixDZu46DPxL72+2ujg7FXIHVkE9DbnurnvU9tZw0E1nb2t8RUaMXbht",
+	"LAc2O5ifTLTWtsqWyBPNBe6CXJs1zi7lTUAYTnjl27lUWiRpBAq+I4W+9+7ObGcm4jqPVnsDBeynIwVe",
+	"c50Iyv0g/BJ5G10i/chW3hnLkBpRMsRJBQUcIyfbqM2dtTebyZ+PhAso4EO+Xm/5Q10+H8kLXdtquh8u",
+	"S0f5oJp3vaSbt85d4J6EQfUvrrp/kXWfQjaYKR+dFGOv7MZcu8/PtV7YUcGnP2HiIYKfX1C9QdzhZEuk",
+	"DTGSmK/S2QU1sddWFvA2o8NiTpx6TbpFRgpQXD62w7d6vEV8V7pK8mDki/gJFFjdpmwMt8I0G0wdqokK",
+	"j3N09Tc2Wv+mvB/d/Z3Z6ZjGqMbwbMXjf+N0v7fwJoIzrAxhybKEuMbMkVkaq5vpvqlRVwn/Ck5dH6zt",
+	"RjLKsFtp3RN+BzC+n2zHyBPNYow/AwAA//935IaOeQkAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

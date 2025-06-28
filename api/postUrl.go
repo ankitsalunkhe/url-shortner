@@ -29,7 +29,7 @@ func (a *API) PostURL(e echo.Context) error {
 		)
 	}
 
-	return e.JSON(200, Success{
+	return e.JSON(200, CreateUrl{
 		Url: shortUrl,
 	})
 }

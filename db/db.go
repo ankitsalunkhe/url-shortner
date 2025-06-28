@@ -34,6 +34,7 @@ func (url Url) GetKey() map[string]types.AttributeValue {
 type Database interface {
 	UpsertUrl(context.Context, Url) error
 	GetUrl(context.Context, Url) (string, error)
+	DeletUrl(context.Context, Url) error
 }
 
 type DB struct {
