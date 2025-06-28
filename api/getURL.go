@@ -8,7 +8,6 @@ import (
 )
 
 func (a *API) GetURL(e echo.Context, shortUrl string) error {
-
 	longUrl, err := a.service.GetLongUrl(e.Request().Context(), shortUrl)
 	if err != nil {
 		return echo.NewHTTPError(

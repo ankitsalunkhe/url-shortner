@@ -44,3 +44,14 @@ func (db *DB) GetUrl(ctx context.Context, url Url) (string, error) {
 
 	return longUrl, nil
 }
+
+func (db *DB) DeletUrl(ctx context.Context, url Url) error {
+	_, err := db.Client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
+		Key: url.GetKey(), TableName: aws.String(db.TableName),
+	})
+	if err != nil {
+		return fmt.Errorf("deleting item from db: %w", err)
+	}
+
+	return nil
+}

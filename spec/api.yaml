@@ -12,7 +12,7 @@ paths:
       description: Ping Endpoint
       responses:
         200:
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/Ping"
   /url/{shortUrl}:
     get:
       summary: Get Long URL
@@ -26,7 +26,29 @@ paths:
             type: string
       responses:
         301:
-          $ref: "#/components/responses/Success"
+          description: Redirect to the original long URL
+          headers:
+            Location:
+              description: The URL to redirect to
+              schema:
+                type: string
+        400:
+          $ref: "#/components/responses/Error"
+        500:
+          $ref: "#/components/responses/Error"
+    delete:
+      summary: Delete Long URL
+      operationId: deleteURL
+      parameters:
+        - name: shortUrl
+          in: path
+          required: true
+          description: The short URL code
+          schema:
+            type: string
+      responses:
+        200:
+          $ref: "#/components/responses/DeleteUrl"
         400:
           $ref: "#/components/responses/Error"
         500:
@@ -43,7 +65,7 @@ paths:
               $ref: "#/components/schemas/request"
       responses:
         201:
-          $ref: "#/components/responses/Success"
+          $ref: "#/components/responses/CreateUrl"
         400:
           $ref: "#/components/responses/Error"
         500:
@@ -70,7 +92,19 @@ components:
               message:
                 type: string
                 example: "https://git.com/asdf123"
-    Success:
+    DeleteUrl:
+      description: Successful response
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "https://git.com/asdf123"
+            required:
+              - message
+    CreateUrl:
       description: Successful response
       content:
         application/json:

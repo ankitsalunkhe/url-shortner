@@ -11,6 +11,7 @@ import (
 type UrlShortnerService interface {
 	UpsertShortUrl(context.Context, string) (string, error)
 	GetLongUrl(context.Context, string) (string, error)
+	DeleteLongUrl(context.Context, string) error
 }
 
 type urlShortnerService struct {
@@ -45,5 +46,18 @@ func (s *urlShortnerService) GetLongUrl(ctx context.Context, shortUrl string) (s
 		return "", fmt.Errorf("get item from db: %w", err)
 	}
 
+	if longUrl == "" {
+		return "", fmt.Errorf("no shortUrl found: %s", shortUrl)
+	}
+
 	return longUrl, nil
+}
+
+func (s *urlShortnerService) DeleteLongUrl(ctx context.Context, shortUrl string) error {
+	err := s.db.DeletUrl(ctx, db.Url{ShortUrl: shortUrl})
+	if err != nil {
+		return fmt.Errorf("get item from db: %w", err)
+	}
+
+	return nil
 }
