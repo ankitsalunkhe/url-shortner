@@ -7,6 +7,7 @@ import (
 	"github.com/ankitsalunkhe/url-shortner/api"
 	"github.com/ankitsalunkhe/url-shortner/config"
 	"github.com/ankitsalunkhe/url-shortner/db"
+	"github.com/ankitsalunkhe/url-shortner/retriever"
 	"github.com/ankitsalunkhe/url-shortner/service"
 )
 
@@ -16,12 +17,17 @@ func main() {
 		log.Fatal("failed to load config", err)
 	}
 
+	rt, err := retriever.New(cfg.RtConfig)
+	if err != nil {
+		log.Fatal("unable to start zookeeper", err)
+	}
+
 	db, err := db.New()
 	if err != nil {
 		log.Fatal("failed to load config", err)
 	}
 
-	urlShornterService := service.New(db)
+	urlShornterService := service.New(db, rt)
 
 	a := api.New(cfg.Port, cfg.BasePath, &urlShornterService)
 

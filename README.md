@@ -1,9 +1,21 @@
+# URL Shortner
+
+
+## Getting Started
+
+To set up docker containers running and ready for you to run, run below command
+
+```shell
+make infra
+```
+
 To create new table
 ```shell
    aws dynamodb create-table \
     --table-name Url \
     --attribute-definitions \
         AttributeName=ShortUrl,AttributeType=S \
+    --global-secondary-indexes
     --key-schema AttributeName=ShortUrl,KeyType=HASH \
     --table-class STANDARD \
     --provisioned-throughput \

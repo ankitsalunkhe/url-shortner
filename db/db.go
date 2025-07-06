@@ -32,14 +32,15 @@ func (url Url) GetKey() map[string]types.AttributeValue {
 }
 
 type Database interface {
-	UpsertUrl(context.Context, Url) error
-	GetUrl(context.Context, Url) (string, error)
-	DeletUrl(context.Context, Url) error
+	UpsertUrl(ctx context.Context, url Url) error
+	GetLongUrl(ctx context.Context, url Url) (string, error)
+	DeletUrl(ctx context.Context, url Url) error
+	GetShortUrl(ctx context.Context, longUrl string) (string, error)
 }
 
 type DB struct {
-	Client    *dynamodb.Client
-	TableName string
+	client    *dynamodb.Client
+	tableName string
 }
 
 var _ Database = (*DB)(nil)
@@ -60,8 +61,8 @@ func New() (*DB, error) {
 	})
 
 	return &DB{
-		Client:    svc,
-		TableName: "Url",
+		client:    svc,
+		tableName: "Url",
 	}, nil
 }
 

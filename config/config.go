@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/ankitsalunkhe/url-shortner/retriever"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 )
@@ -11,6 +12,7 @@ import (
 type Config struct {
 	Port     int    `envconfig:"PORT" required:"true"`
 	BasePath string `envconfig:"BASE_PATH" required:"true"`
+	RtConfig retriever.Config
 }
 
 func New() (Config, error) {
