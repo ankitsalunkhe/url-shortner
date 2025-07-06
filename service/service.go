@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ankitsalunkhe/url-shortner/db"
+	"github.com/ankitsalunkhe/url-shortner/retriever"
 	base62shortner "github.com/ankitsalunkhe/url-shortner/shortner"
 )
 
@@ -15,21 +16,37 @@ type UrlShortnerService interface {
 }
 
 type urlShortnerService struct {
-	db db.Database
+	db  db.Database
+	ret retriever.Retriever
 }
 
 var _ UrlShortnerService = (*urlShortnerService)(nil)
 
-func New(db db.Database) urlShortnerService {
+func New(db db.Database, ret retriever.Retriever) urlShortnerService {
 	return urlShortnerService{
-		db: db,
+		db:  db,
+		ret: ret,
 	}
 }
 
 func (s *urlShortnerService) UpsertShortUrl(ctx context.Context, longUrl string) (string, error) {
-	shortUrl := base62shortner.New().Generate(100000000000)
+	shortUrl, err := s.db.GetShortUrl(ctx, longUrl)
+	if err != nil {
+		return "", fmt.Errorf("checking if long url already exists: %w", err)
+	}
 
-	err := s.db.UpsertUrl(ctx, db.Url{
+	if shortUrl != "" {
+		return shortUrl, nil
+	}
+
+	base, err := s.ret.GetBase()
+	if err != nil {
+		return "", fmt.Errorf("unbale to get new range: %w", err)
+	}
+
+	shortUrl = base62shortner.New().Generate(base)
+
+	err = s.db.UpsertUrl(ctx, db.Url{
 		LongUrl:  longUrl,
 		ShortUrl: shortUrl,
 	})
@@ -41,7 +58,7 @@ func (s *urlShortnerService) UpsertShortUrl(ctx context.Context, longUrl string)
 }
 
 func (s *urlShortnerService) GetLongUrl(ctx context.Context, shortUrl string) (string, error) {
-	longUrl, err := s.db.GetUrl(ctx, db.Url{ShortUrl: shortUrl})
+	longUrl, err := s.db.GetLongUrl(ctx, db.Url{ShortUrl: shortUrl})
 	if err != nil {
 		return "", fmt.Errorf("get item from db: %w", err)
 	}
