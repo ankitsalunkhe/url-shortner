@@ -4,11 +4,11 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/ankitsalunkhe/url-shortner/api"
-	"github.com/ankitsalunkhe/url-shortner/config"
-	"github.com/ankitsalunkhe/url-shortner/db"
-	"github.com/ankitsalunkhe/url-shortner/retriever"
-	"github.com/ankitsalunkhe/url-shortner/service"
+	"github.com/ankitsalunkhe/url-shortner/internal/api"
+	"github.com/ankitsalunkhe/url-shortner/internal/config"
+	"github.com/ankitsalunkhe/url-shortner/internal/db"
+	"github.com/ankitsalunkhe/url-shortner/internal/retriever"
+	"github.com/ankitsalunkhe/url-shortner/internal/service"
 )
 
 func main() {

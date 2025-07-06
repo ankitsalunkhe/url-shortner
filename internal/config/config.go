@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/ankitsalunkhe/url-shortner/retriever"
+	"github.com/ankitsalunkhe/url-shortner/internal/retriever"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 )
