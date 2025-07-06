@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ankitsalunkhe/url-shortner/db"
-	"github.com/ankitsalunkhe/url-shortner/retriever"
-	base62shortner "github.com/ankitsalunkhe/url-shortner/shortner"
+	"github.com/ankitsalunkhe/url-shortner/internal/db"
+	"github.com/ankitsalunkhe/url-shortner/internal/retriever"
+	base62shortner "github.com/ankitsalunkhe/url-shortner/internal/shortner"
 )
 
 type UrlShortnerService interface {

@@ -2,7 +2,7 @@
 package api
 
 import (
-	"github.com/ankitsalunkhe/url-shortner/service"
+	"github.com/ankitsalunkhe/url-shortner/internal/service"
 	"github.com/labstack/echo/v4"
 )
 
