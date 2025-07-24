@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -17,6 +18,11 @@ import (
 const (
 	DynamoRegion = "eu-west-1"
 )
+
+type Config struct {
+	Host string `envconfig:"DB_HOST" required:"true"`
+	Port int    `envconfig:"DB_PORT" required:"true"`
+}
 
 type Url struct {
 	ShortUrl string `dynamodbav:"ShortUrl"`
@@ -45,14 +51,17 @@ type DB struct {
 
 var _ Database = (*DB)(nil)
 
-func New() (*DB, error) {
+func New(dbConfig Config) (*DB, error) {
 	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(DynamoRegion))
 	if err != nil {
 		log.Fatalf("unable to load SDK config, %v", err)
 	}
 
 	svc := dynamodb.NewFromConfig(cfg, func(o *dynamodb.Options) {
-		o.EndpointResolverV2 = &LocalDynamoEndpointResolver{}
+		o.EndpointResolverV2 = &CustomDynamoEndpointResolver{
+			Host: dbConfig.Host,
+			Port: dbConfig.Port,
+		}
 		o.Credentials = credentials.NewStaticCredentialsProvider(
 			"testkey",
 			"testsecret",
@@ -66,13 +75,15 @@ func New() (*DB, error) {
 	}, nil
 }
 
-// &LocalDynamoEndpointResolver implements a custom endpoint resolver for local DynamoDB.
-type LocalDynamoEndpointResolver struct{}
+// &CustomDynamoEndpointResolver implements a custom endpoint resolver for local DynamoDB.
+type CustomDynamoEndpointResolver struct {
+	Host string
+	Port int
+}
 
-func (*LocalDynamoEndpointResolver) ResolveEndpoint(context.Context, dynamodb.EndpointParameters) (smithyendpoints.Endpoint, error) {
-	u, err := url.Parse("http://localhost:8000")
+func (cd *CustomDynamoEndpointResolver) ResolveEndpoint(context.Context, dynamodb.EndpointParameters) (smithyendpoints.Endpoint, error) {
+	u, err := url.Parse("http://" + cd.Host + ":" + strconv.Itoa(cd.Port))
 	if err != nil {
-		// return endpoints.Endpoint{}, fmt.Errorf("parsing DynamoDB local URL: %w", err)
 		return smithyendpoints.Endpoint{}, fmt.Errorf("parsing DynamoDB local URL: %w", err)
 	}
 

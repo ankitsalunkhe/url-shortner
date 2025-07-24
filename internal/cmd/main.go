@@ -22,7 +22,7 @@ func main() {
 		log.Fatal("unable to start zookeeper", err)
 	}
 
-	db, err := db.New()
+	db, err := db.New(cfg.DBConfig)
 	if err != nil {
 		log.Fatal("failed to load config", err)
 	}

@@ -15,8 +15,8 @@ const (
 )
 
 type Config struct {
-	ZkAddress string `envconfig:"ZK_ADDRESS" default:"localhost"`
-	ZkPort    int    `envconfig:"ZK_PORT" default:"2181"`
+	ZkAddress string `envconfig:"ZK_ADDRESS" required:"true"`
+	ZkPort    int    `envconfig:"ZK_PORT" required:"true"`
 }
 
 type Retriever interface {

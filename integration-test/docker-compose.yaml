@@ -1,0 +1,111 @@
+networks:
+  integration-test:
+    name: integration-test
+
+services:
+  dynamodb-local:
+    networks:
+      - integration-test
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
+    image: "amazon/dynamodb-local:latest"
+    container_name: dynamodb-local
+    ports:
+      - "8000:8000"
+    volumes:
+      - "./docker/dynamodb:/home/dynamodblocal/data"
+    working_dir: /home/dynamodblocal
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'if [ "$(curl -s -o /dev/null -I -w ''%{http_code}'' http://localhost:8000)" == "400" ]; then exit 0; else exit 1; fi',
+        ]
+      interval: 1s
+      timeout: 20s
+      retries: 10
+      start_period: 5s
+  
+  init-dynamodb:
+    networks:
+      - integration-test 
+    image: amazon/aws-cli
+    depends_on:
+      dynamodb-local:
+          condition: service_healthy
+    volumes:
+    - "./scripts:/scripts"
+    entrypoint: |
+      sh -c "
+      sh /scripts/init-dynamodb.sh
+      " 
+    healthcheck:
+      test: ["CMD", "echo", "healthy"]
+      interval: 1s
+      timeout: 1s
+      retries: 1
+      start_period: 1s
+  
+  zookeeper:
+    networks:
+      - integration-test
+    image: 'bitnami/zookeeper:latest'
+    container_name: zookeeper-local
+    healthcheck:
+      test: nc -z localhost 2181 || exit -1
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    ports:
+      - "2181:2181"
+
+  url-shortner:
+    networks:
+      - integration-test
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+      init-dynamodb:
+        condition: service_healthy
+    build:
+      context: ../
+      dockerfile: integration-test/Dockerfile
+    image: url-shortner:latest
+    ports:
+      - "8088:8088"
+    environment:
+      - ENVIRONMENT=local
+      - PORT=8088
+      - BASE_PATH=/api/v1
+      - ZK_ADDRESS=zookeeper-local
+      - ZK_PORT=2181
+      - DB_HOST=dynamodb-local
+      - DB_PORT=8000
+    command: >
+      bash -c " go run ./internal/cmd/main.go"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'if [ "$(curl -s -o /dev/null -I -w ''%{http_code}'' localhost:8088/api/v1/ping)" != "200" ]; then exit 0; else exit 1; fi',
+        ]
+      interval: 1s
+      timeout: 20s
+      retries: 10
+      start_period: 5s
+  
+  integration-tests:
+    networks:
+      - integration-test
+    build:
+      context: ../
+      dockerfile: integration-test/Dockerfile.test
+    image: integration-tests:latest
+    command: >
+      bash -c " go test -timeout 20m  -tags integration -v ./integration-test/tests/..."
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+      init-dynamodb:
+        condition: service_healthy

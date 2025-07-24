@@ -4,15 +4,18 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/ankitsalunkhe/url-shortner/internal/db"
 	"github.com/ankitsalunkhe/url-shortner/internal/retriever"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 )
 
 type Config struct {
-	Port     int    `envconfig:"PORT" required:"true"`
-	BasePath string `envconfig:"BASE_PATH" required:"true"`
-	RtConfig retriever.Config
+	Port        int    `envconfig:"PORT" required:"true"`
+	BasePath    string `envconfig:"BASE_PATH" required:"true"`
+	Environment string `envconfig:"ENVIRONMENT" default:"local"`
+	RtConfig    retriever.Config
+	DBConfig    db.Config
 }
 
 func New() (Config, error) {
