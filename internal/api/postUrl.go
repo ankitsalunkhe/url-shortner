@@ -7,6 +7,11 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+type Url struct {
+	ShortUrl string `dynamodbav:"ShortUrl"`
+	LongUrl  string `dynamodbav:"LongUrl"`
+}
+
 func (a *API) PostURL(e echo.Context) error {
 	var request Request
 	if err := e.Bind(&request); err != nil {
